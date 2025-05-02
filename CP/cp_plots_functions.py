@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 import time 
 from datetime import datetime
 
-import sys
-sys.path.insert(1, '../python-scripts-c6fxKDJrSsWp1xCxON1Y7g')
 from api_calls import *
 
 def print_cp_overview(data):

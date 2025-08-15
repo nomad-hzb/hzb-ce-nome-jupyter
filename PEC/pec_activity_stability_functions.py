@@ -234,8 +234,12 @@ def analyse_photoactivity(current, time, prominence=0.02, distance=5):
             ΔI = current[p] - current[v]
             delta_I_list.append((v, p, ΔI))
     
-    mean_delta_I = np.mean([d[2] for d in delta_I_list]) if delta_I_list else None
-    
+    mean_delta_I = np.mean([d[2] for d in delta_I_list])*1000 if delta_I_list else None  #mA
+
+    # we do not want values where there is only 1 or 2 glitches in the data
+    if len(delta_I_list) < 3:
+        mean_delta_I = -1
+        
     return {
         'peaks': peaks,
         'valleys': valleys,
@@ -281,10 +285,69 @@ def get_photoactivity_plot(time, current, results):
     fig.add_trace(go.Scatter(x=[time[0]], y=[current[0]], mode='lines', name='ΔI', line=dict(color='green')))
     
     fig.update_layout(
-        xaxis_title='Time',
-        yaxis_title='Current',
-        title=f'Photoactivity with ΔI (mean ΔI={results["mean_delta_I"]:.3f})',
+        xaxis_title='Time (s)',
+        yaxis_title='Current (A)',
+        title=f'Photoactivity (mean ΔI={results["mean_delta_I"]} mA)',
         template='plotly_white'
     )
     
+    return fig
+    
+
+def analyse_stability(time, voltage):
+    max_volt_idx = np.argmax(voltage)
+    time_interval_start = (time > time[max_volt_idx]) & (time <= time[max_volt_idx] + 600)
+    mean_voltage_start = voltage[time_interval_start].mean()
+
+    time_interval_end = time >= time.max() - 1000
+    mean_voltage_end = voltage[time_interval_end].mean()
+
+    voltage_diff = mean_voltage_start - mean_voltage_end
+    percentage_of_loss = voltage_diff / mean_voltage_start * 100
+
+    return {
+        'time_interval_start': time_interval_start,
+        'time_interval_end': time_interval_end,
+        'mean_voltage_start': mean_voltage_start,
+        'mean_voltage_end': mean_voltage_end,
+        'voltage_diff': voltage_diff,
+        'percentage_of_loss': percentage_of_loss
+    }
+
+
+def get_stability_plot(time, voltage, stability_analysis_result):
+    time_interval_start = stability_analysis_result['time_interval_start']
+    time_interval_end = stability_analysis_result['time_interval_end']
+    mean_voltage_start = stability_analysis_result['mean_voltage_start']
+    mean_voltage_end = stability_analysis_result['mean_voltage_end']
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=time, y=voltage,
+        mode='lines',
+        name='Original Voltage',
+        line=dict(color='gray')
+    ))
+    fig.add_trace(go.Scatter(
+        x=time[time_interval_start],
+        y=[mean_voltage_start]*time_interval_start.sum(),
+        mode='lines',
+        name=f'Mean Voltage Start = {mean_voltage_start*1000:.2f} mV',
+        line=dict(color='red') #, dash='dash')
+    ))
+    fig.add_trace(go.Scatter(
+        x=time[time_interval_end],
+        y=[mean_voltage_end]*time_interval_end.sum(),
+        mode='lines',
+        name=f'Mean Voltage End = {mean_voltage_end*1000:.2f} mV',
+        line=dict(color='red') #, dash='dot')
+    ))
+
+    fig.update_layout(
+        title=f'Stability (percentage of loss: {stability_analysis_result['percentage_of_loss']:.3f})',
+        xaxis_title='Time (s)',
+        yaxis_title='Voltage (V)',
+        legend_title=f'Difference: {stability_analysis_result['voltage_diff']*1000:.3f} mV -> {stability_analysis_result['percentage_of_loss']:.3f} %',
+        template='plotly_white',
+    )
     return fig

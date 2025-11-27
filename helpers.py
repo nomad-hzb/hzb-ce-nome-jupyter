@@ -2,7 +2,7 @@ import io
 import ipywidgets as widgets
 import urllib
 import zipfile
-
+import plotly.graph_objects as go
 
 def create_zip_download_link(dfs, file_names, folder_name=''):
     zip_buffer = io.BytesIO()
@@ -36,3 +36,22 @@ def create_zip_plots_link(plot_list, file_names, folder_name=''):
         f'<button>Download {folder_name} (ZIP folder)</button></a>'
     )
     display(download_button)
+
+def get_line_plot(plot_title, x_axis_label, y_axis_label, traces_label_list, x_data_traces_list, y_data_traces_list,):
+    fig = go.Figure()
+    for x_data, y_data, label in zip(x_data_traces_list, y_data_traces_list, traces_label_list):
+        fig.add_trace(go.Scatter(
+            x=x_data,
+            y=y_data,
+            mode='lines',
+            name=label,
+            line=dict(width=2),
+        ))
+    
+    fig.update_layout(
+        title=plot_title,
+        xaxis_title=x_axis_label,
+        yaxis_title=y_axis_label,
+        template="plotly_white"
+    )
+    return fig
